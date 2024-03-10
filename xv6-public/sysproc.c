@@ -89,3 +89,10 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+//Custom Syscalls
+int
+sys_getpgdirinfo(void){
+  //code here
+  return 0;
+}
