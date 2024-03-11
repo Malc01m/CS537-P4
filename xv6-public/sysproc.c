@@ -135,3 +135,15 @@ if (copyout(myproc()-> pgdir, (uint)info, (char *)&localinfo, sizeof(localinfo))
 
 return 0;
 }
+
+int sys_getwmapinfo(struct wmapinfo *wminfo) {
+
+  // Get PCB
+  struct proc *myProc = myproc();
+
+  // Hand off wmap pointer
+  wminfo = myProc->wmap;
+
+  return SUCCESS;
+  
+}
