@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "wmap.h"
 
 int
 sys_fork(void)
@@ -88,4 +89,49 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+//Custom Syscalls
+int
+sys_getpgdirinfo(void){
+  struct pgdirinfo *info;
+  struct pgdirinfo localinfo;
+  int i,j;
+
+  if (argptr(0, (void *)&info, sizeof(struct pgdirinfo*))<0)
+    return -1;
+  
+memset(&localinfo, 0, sizeof(localinfo));
+
+pde_t *pgdir = myproc()->pgdir;
+uint count = 0;
+
+// Loop through page directory
+for (i = 0; i < NPDENTRIES && count < MAX_UPAGE_INFO; i++)
+{
+  pde_t pde = pgdir[i];
+  // Check for entry in page table
+  if (pde & PTE_P)
+  {
+    pte_t *pgtab = (pte_t *)P2V(PTE_ADDR(pde));
+    for (j = 0; j < NPTENTRIES && count < MAX_UPAGE_INFO; j++)
+    {
+      pte_t pte = pgtab[j];
+      // Ensure page table is present and available to the user
+      if ((pte & PTE_P) && (pte & PTE_U)) 
+      {
+        uint va = (i << PDXSHIFT) | (pte & PTE_U);
+        localinfo.va[count] = va;
+        localinfo.pa[count] = PTE_ADDR(pte) | (va & 0xFFF);
+        count++;
+      }
+    }
+  }
+}
+localinfo.n_upages = count;
+
+if (copyout(myproc()-> pgdir, (uint)info, (char *)&localinfo, sizeof(localinfo)) < 0)
+  return -1;
+
+return 0;
 }

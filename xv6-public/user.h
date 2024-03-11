@@ -1,3 +1,4 @@
+#include "wmap.h"
 struct stat;
 struct rtcdate;
 
@@ -37,3 +38,7 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
+
+//Custom syscalls
+int getpgdirinfo(struct pgdirinfo*);

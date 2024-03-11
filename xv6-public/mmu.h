@@ -1,3 +1,6 @@
+#ifndef MMU
+#define MMU
+
 // This file contains definitions for the
 // x86 memory management unit (MMU).
 
@@ -179,3 +182,4 @@ struct gatedesc {
 }
 
 #endif
+#endif //Guard thing
