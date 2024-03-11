@@ -1,3 +1,4 @@
+#include "wmap.h"
 struct stat;
 struct rtcdate;
 
