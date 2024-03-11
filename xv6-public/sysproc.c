@@ -180,14 +180,12 @@ sys_wmap(void) {
 
 	// Vaildate length
 	if (length <= 0) {
-		printf(1, "wmap error: invalid length\n");
 		return FAILED;
 	}
 	int pages = (length / PAGE_SIZE) + ((length % PAGE_SIZE) != 0);
 
 	// Parse flags
 	if ((flags >= 16) | (flags < 0)) {
-		printf(1, "wmap error: invalid flag value\n");
 		return FAILED;
 	}
 	int mapFixed = 0;
@@ -208,7 +206,6 @@ sys_wmap(void) {
 	int mapPrivate = 0;
 	if (flags >= 1) {
 		if (mapShared) {
-			printf(1, "wmap error: flags cannot specify both shared and private\n");
 			return FAILED;
 		}
 		mapPrivate = 1;
