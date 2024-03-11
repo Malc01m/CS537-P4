@@ -1,4 +1,4 @@
-// Flags for wmap
+// Flags for wmap 
 #define MAP_PRIVATE 0x0001
 #define MAP_SHARED 0x0002
 #define MAP_ANONYMOUS 0x0004
