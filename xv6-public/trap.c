@@ -7,6 +7,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
+#include "wmap.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -77,6 +78,22 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+    
+  // Added P4
+  case T_PGFLT:
+    struct wmapinfo *wminfo;
+    if (getwmapinfo(wminfo) != SUCCESS) {
+    	cprintf("Failed to get wmap info\n");
+    	break;
+    }
+    if (wminfo->n_loaded_pages == 0) {
+      cprintf("Detected alloc - not implemented\n");
+      break;
+    } else {
+      cprintf("Segmentation Fault\n");
+      myproc()->killed = 1;
+      break;
+    }
 
   //PAGEBREAK: 13
   default:
