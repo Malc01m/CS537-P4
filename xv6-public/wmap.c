@@ -24,17 +24,17 @@ uint wmap(uint addr, int length, int flags, int fd) {
 	int mapFixed = 0;
 	if (flags >= 8) {
 		mapFixed = 1;
-		fd -= 8;
+		flags -= 8;
 	}
 	int mapAnonymous = 0;
 	if (flags >= 4) {
 		mapAnonymous = 1;
-		fd -= 4;
+		flags -= 4;
 	}
 	int mapShared = 0;
 	if (flags >= 2) {
 		mapShared = 1;
-		fd -= 2;
+		flags -= 2;
 	}
 	int mapPrivate = 0;
 	if (flags >= 1) {
