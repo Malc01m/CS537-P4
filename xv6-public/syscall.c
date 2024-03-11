@@ -130,6 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_close]        sys_close,
 [SYS_getpgdirinfo] sys_getpgdirinfo,
 [SYS_getwmapinfo]  sys_getwmapinfo,
+[SYS_wmap]         sys_wmap,
 };
 
 void
