@@ -182,4 +182,4 @@ struct gatedesc {
 }
 
 #endif
-#endif
+#endif //Guard thing

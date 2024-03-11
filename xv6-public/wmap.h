@@ -1,3 +1,5 @@
+#ifndef WMAP
+#define WMAP
 // Flags for wmap
 #define MAP_PRIVATE 0x0001
 #define MAP_SHARED 0x0002
@@ -26,3 +28,4 @@ struct wmapinfo {
     int length[MAX_WMMAP_INFO];         // Size of mapping
     int n_loaded_pages[MAX_WMMAP_INFO]; // Number of pages physically loaded into memory
 };
+#endif
