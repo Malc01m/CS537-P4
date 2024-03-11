@@ -105,6 +105,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_getpgdirinfo(void);
 extern int sys_getwmapinfo(void);
+extern int sys_wmap(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]         sys_fork,
