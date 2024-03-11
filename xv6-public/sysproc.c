@@ -143,6 +143,9 @@ sys_getwmapinfo(void) {
 
   // Arg
   struct wmapinfo *wminfo;
+  if (argptr(1, (void*) &wminfo, sizeof(struct wmapinfo*)) > 0) {
+    return FAILED;
+  }
 
   // Get PCB
   struct proc *myProc = myproc();
@@ -156,11 +159,24 @@ sys_getwmapinfo(void) {
 
 int
 sys_wmap(void) {
+
   // Args
   uint addr;
+  if (argptr(1, (void*) &addr, sizeof(uint)) > 0) {
+    return FAILED;
+  }
   int length; 
+  if (argptr(2, (void*) &length, sizeof(int)) > 0) {
+    return FAILED;
+  }
   int flags;
+  if (argptr(3, (void*) &flags, sizeof(int)) > 0) {
+    return FAILED;
+  }
   int fd;
+  if (argptr(4, (void*) &fd, sizeof(int)) > 0) {
+    return FAILED;
+  }
 
 	// Vaildate length
 	if (length <= 0) {
