@@ -120,7 +120,7 @@ for (i = 0; i < NPDENTRIES && count < MAX_UPAGE_INFO; i++)
       // Ensure page table is present and available to the user
       if ((pte & PTE_P) && (pte & PTE_U)) 
       {
-        uint va = (i << PDXSHIFT) | (pte & PTE_U);
+        uint va = (i << PDXSHIFT) | (j << PTXSHIFT);
         localinfo.va[count] = va;
         localinfo.pa[count] = PTE_ADDR(pte) | (va & 0xFFF);
         count++;
