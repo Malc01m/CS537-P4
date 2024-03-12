@@ -8,6 +8,8 @@
 #include "proc.h"
 #include "wmap.h"
 
+#define PAGE_SIZE 4096
+
 int
 sys_fork(void)
 {
@@ -135,3 +137,94 @@ if (copyout(myproc()-> pgdir, (uint)info, (char *)&localinfo, sizeof(localinfo))
 
 return 0;
 }
+
+int 
+sys_getwmapinfo(void) {
+
+  // Arg
+  struct wmapinfo *wminfo;
+  if (argptr(1, (void*) &wminfo, sizeof(struct wmapinfo*)) > 0) {
+    return FAILED;
+  }
+
+  // Get PCB
+  struct proc *myProc = myproc();
+
+  // Hand off wmap pointer
+  wminfo = myProc->wmap;
+
+  return SUCCESS;
+  
+}
+
+int
+sys_wmap(void) {
+
+  // Args
+  uint addr;
+  if (argptr(1, (void*) &addr, sizeof(uint)) > 0) {
+    return FAILED;
+  }
+  int length; 
+  if (argptr(2, (void*) &length, sizeof(int)) > 0) {
+    return FAILED;
+  }
+  int flags;
+  if (argptr(3, (void*) &flags, sizeof(int)) > 0) {
+    return FAILED;
+  }
+  int fd;
+  if (argptr(4, (void*) &fd, sizeof(int)) > 0) {
+    return FAILED;
+  }
+
+	// Vaildate length
+	if (length <= 0) {
+		return FAILED;
+	}
+	int pages = (length / PAGE_SIZE) + ((length % PAGE_SIZE) != 0);
+
+	// Parse flags
+	if ((flags >= 16) | (flags < 0)) {
+		return FAILED;
+	}
+  /*
+	int mapFixed = 0;
+	if (flags >= 8) {
+		mapFixed = 1;
+		flags -= 8;
+	}
+	int mapAnonymous = 0;
+	if (flags >= 4) {
+		mapAnonymous = 1;
+		flags -= 4;
+	}
+	int mapShared = 0;
+	if (flags >= 2) {
+		mapShared = 1;
+		flags -= 2;
+	}
+	int mapPrivate = 0;
+	if (flags >= 1) {
+		if (mapShared) {
+			return FAILED;
+		}
+		mapPrivate = 1;
+	}
+  */
+
+	// Get own process pointer
+	struct proc* myProc = myproc();
+	
+	// Allocate a page
+	char *mem = kalloc();
+	// For each page, place an entry in the page table
+	mappages(myProc->pgdir, (void*)0x60000000, 4096, V2P(mem), PTE_W | PTE_U);
+	
+	for (int i = 0; i < (pages - 1); i++) {
+		mem = kalloc();
+		mappages(myProc->pgdir, (void*)(0x60000000 + (PAGE_SIZE * (i + 1))), 4096, V2P(mem), PTE_W | PTE_U);
+	}
+
+  return SUCCESS;
+};
