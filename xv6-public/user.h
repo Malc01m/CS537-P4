@@ -42,3 +42,4 @@ int atoi(const char*);
 
 //Custom syscalls
 int getpgdirinfo(struct pgdirinfo*);
+int getwmapinfo(struct wmapinfo*);
