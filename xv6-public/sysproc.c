@@ -141,20 +141,23 @@ return 0;
 int 
 sys_getwmapinfo(void) {
 
-  // Arg
-  struct wmapinfo *wminfo;
-  if (argptr(1, (void*) &wminfo, sizeof(struct wmapinfo*)) > 0) {
-    return FAILED;
+ struct wmapinfo *wminfo;
+
+ //Check if argptr gets the pointer successfully
+  if (argptr(0, (void*) & wminfo, sizeof(struct wmapinfo*)) < 0)
+  {
+    return -1;
   }
 
-  // Get PCB
   struct proc *myProc = myproc();
 
-  // Hand off wmap pointer
-  wminfo = &(myProc->wmap);
+  // Copy from kernel to user space
+  if (copyout(myProc->pgdir, (uint)wminfo, (char *) & (myProc->wmap), sizeof(struct wmapinfo)) < 0)
+  {
+    return -1;
+  }
 
-  return SUCCESS;
-  
+  return 0;
 }
 
 int
