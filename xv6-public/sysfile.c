@@ -442,3 +442,29 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+// WUNMAP IMPLEMENTATION WORK-IN-PROGRESS
+int
+wunmap(uint addr)
+{
+  struct proc *currproc = myproc();
+
+  if ((addr & (PGSIZE -1)) != 0)
+  {
+    return -1;
+  }
+  pte_t *pte;
+  uint pa, i;
+
+  for (i = 0; i < currproc->sz; i += PGSIZE)
+  {
+    if (((pte = walkpgdir(currproc->pgdir,(void*)(addr + i), 0)) == 0) || ((*pte & PTE_P) == 0))
+    {
+      continue;
+    }
+    pa = PTE_ADDR(*pte);
+    kfree((char*)P2V(pa));
+    *pte = 0;
+  }
+  switchuvm(currproc);
+  return 0;
+}

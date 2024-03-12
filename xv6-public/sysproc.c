@@ -135,16 +135,3 @@ if (copyout(myproc()-> pgdir, (uint)info, (char *)&localinfo, sizeof(localinfo))
 
 return SUCCESS;
 }
-
-int
-sys_wunmap(void)
-{
-  uint addr;
-
-  // Check for fetching the argument and page alignment
-  if ((argint(0, (int*)&addr) < 0) || (addr % PGSIZE != 0))
-  {
-    return FAILED;
-  }
-  return SUCCESS;
-}
