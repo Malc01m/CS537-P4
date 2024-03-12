@@ -8,6 +8,7 @@
 #include "traps.h"
 #include "spinlock.h"
 #include "wmap.h"
+#include "user.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -79,7 +80,7 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
     
-  // Added P4
+  // Added for P4
   case T_PGFLT:
     struct wmapinfo *wminfo;
     if (getwmapinfo(wminfo) != SUCCESS) {
