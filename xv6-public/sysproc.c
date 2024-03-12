@@ -199,7 +199,6 @@ sys_wmap(void) {
 		mapFixed = 1;
 		flags -= 8;
 	}
-  /*
 	int mapAnonymous = 0;
 	if (flags >= 4) {
 		mapAnonymous = 1;
@@ -210,14 +209,12 @@ sys_wmap(void) {
 		mapShared = 1;
 		flags -= 2;
 	}
-	int mapPrivate = 0;
+  // Private is true if shared isn't
 	if (flags >= 1) {
 		if (mapShared) {
 			return FAILED;
 		}
-		mapPrivate = 1;
 	}
-  */
 
 	// Get own process pointer
 	struct proc* myProc = myproc();
@@ -230,37 +227,49 @@ sys_wmap(void) {
 
   int useAddr;
   if (mapFixed) {
+
+    // Check addr within range
+    if ((addr < 0x60000000) || (addr > 0x80000000)) {
+      return FAILED;
+    }
+
     useAddr = addr;
-    // Check for collisions
-    if (myProc->wmap.total_mmaps > 0) {
-      int lastLen = myProc->wmap.length[thisMap - 1];
-      int lastStart = myProc->wmap.addr[thisMap - 1];
-      if (lastStart + lastLen > useAddr) {
+
+    // Check for collisions - can't move
+    for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+      int otherStart = myproc()->wmap.addr[i];
+      int otherEnd = otherStart + myproc()->wmap.length[i];
+      // Check if any other mapping starts or ends within the span of this mapping
+      if (((otherStart < (addr + length)) && (otherStart > addr)) ||
+          ((otherEnd < (addr + length)) && (otherEnd > addr))) {
         return FAILED;
       }
     }
+
   } else {
+
     useAddr = 0x60000000;
+
     // Check for collisions
     if (myProc->wmap.total_mmaps > 0) {
       int recheck = 0;
       do {
-        for (int i = 0; i < myProc->wmap.total_mmaps; i++) {
-          int lastStart = myProc->wmap.addr[i];
-          int lastEnd = lastStart + myProc->wmap.length[i];
-          int thisStart = useAddr;
-          int thisEnd = useAddr + length;
-          while (((thisStart > lastStart) && (thisStart < lastEnd)) ||
-              ((lastStart > thisStart) && (lastStart < thisEnd))) {
-            useAddr += PAGE_SIZE;
-            recheck = 1;
-            // Couldn't find a place
-            if ((useAddr + PAGE_SIZE) >= 0x80000000) {
+        for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+          int otherStart = myproc()->wmap.addr[i];
+          int otherEnd = otherStart + myproc()->wmap.length[i];
+          // Check if any other mapping starts or ends within the span of this mapping
+          if (((otherStart < (addr + length)) && (otherStart > addr)) ||
+              ((otherEnd < (addr + length)) && (otherEnd > addr))) {
+            addr += PAGE_SIZE;
+            if ((addr + length) > 0x80000000) {
               return FAILED;
             }
+            recheck = 1;
+            break;
           }
         }
       } while (recheck);
+
     }
   }
 
@@ -269,6 +278,7 @@ sys_wmap(void) {
   myProc->wmap.length[thisMap] = length;
   myProc->wmap.n_loaded_pages[thisMap] = 0;
   myProc->wmap.total_mmaps++;
+  myProc->wmap.anon[thisMap] = mapAnonymous;
 
   return useAddr;
 };
@@ -281,6 +291,60 @@ sys_wunmap(void) {
 
 int
 sys_wremap(void) {
-  // TODO: Not implemented
-  return FAILED;
+
+  // Args
+  int oldaddr;
+  if (argint(0, &oldaddr) != 0) {
+    return FAILED;
+  }
+  int oldsize; 
+  if (argint(1, &oldsize) != 0) {
+    return FAILED;
+  }
+  int newsize;
+  if (argint(2, &newsize) != 0) {
+    return FAILED;
+  }
+  int flags;
+  if (argint(3, &flags) != 0) {
+    return FAILED;
+  }
+
+  // Get process pointer
+  int thisStart = oldaddr;
+  int thisEnd = oldaddr + newsize;
+
+  // Find our index
+  int foundInd = -1;
+  for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+    if (myproc()->wmap.addr[i] == oldaddr) {
+      foundInd = i;
+    }
+  }
+  if (foundInd == -1) {
+    return FAILED;
+  }
+
+  if (flags == 0) {
+    // Check for collisions - can't move
+    for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+      int otherStart = myproc()->wmap.addr[i];
+      int otherEnd = otherStart + myproc()->wmap.length[i];
+      // Check if any other mapping starts or ends within the span of this mapping
+      if (((otherStart < thisEnd) && (otherStart > thisStart)) ||
+          ((otherEnd < thisEnd) && (otherEnd > thisStart))) {
+        return FAILED;
+      }
+    }
+
+    // We're ok to expand
+    myproc()->wmap.length[foundInd] = newsize;
+    
+  } else if (flags == MREMAP_MAYMOVE) {
+
+  } else {
+    return FAILED;
+  }
+
+  return SUCCESS;
 }
