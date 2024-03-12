@@ -240,8 +240,8 @@ sys_wmap(void) {
       int otherStart = myproc()->wmap.addr[i];
       int otherEnd = otherStart + myproc()->wmap.length[i];
       // Check if any other mapping starts or ends within the span of this mapping
-      if (((otherStart < (addr + length)) && (otherStart > addr)) ||
-          ((otherEnd < (addr + length)) && (otherEnd > addr))) {
+      if (((otherStart <= (addr + length)) && (otherStart >= addr)) ||
+          ((otherEnd <= (addr + length)) && (otherEnd >= addr))) {
         return FAILED;
       }
     }
@@ -252,20 +252,26 @@ sys_wmap(void) {
 
     // Check for collisions
     if (myProc->wmap.total_mmaps > 0) {
-      int recheck = 0;
+      int recheck;
       do {
+        recheck = 0;
         for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+
           int otherStart = myproc()->wmap.addr[i];
           int otherEnd = otherStart + myproc()->wmap.length[i];
+
           // Check if any other mapping starts or ends within the span of this mapping
-          if (((otherStart < (addr + length)) && (otherStart > addr)) ||
-              ((otherEnd < (addr + length)) && (otherEnd > addr))) {
-            addr += PAGE_SIZE;
-            if ((addr + length) > 0x80000000) {
+          if (((otherStart <= (useAddr + length)) && (otherStart >= useAddr)) ||
+              ((otherEnd <= (useAddr + length)) && (otherEnd >= useAddr))) {
+
+            useAddr += PAGE_SIZE;
+            if ((useAddr + length) >= 0x80000000) {
               return FAILED;
+            } else {
+              recheck = 1;
+              break;
             }
-            recheck = 1;
-            break;
+
           }
         }
       } while (recheck);
@@ -331,8 +337,8 @@ sys_wremap(void) {
       int otherStart = myproc()->wmap.addr[i];
       int otherEnd = otherStart + myproc()->wmap.length[i];
       // Check if any other mapping starts or ends within the span of this mapping
-      if (((otherStart < thisEnd) && (otherStart > thisStart)) ||
-          ((otherEnd < thisEnd) && (otherEnd > thisStart))) {
+      if (((otherStart <= thisEnd) && (otherStart >= thisStart)) ||
+          ((otherEnd <= thisEnd) && (otherEnd >= thisStart))) {
         return FAILED;
       }
     }
