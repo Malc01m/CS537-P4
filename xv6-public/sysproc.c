@@ -151,7 +151,7 @@ sys_getwmapinfo(void) {
   struct proc *myProc = myproc();
 
   // Hand off wmap pointer
-  wminfo = myProc->wmap;
+  wminfo = &(myProc->wmap);
 
   return SUCCESS;
   
@@ -161,39 +161,42 @@ int
 sys_wmap(void) {
 
   // Args
-  uint addr;
-  if (argptr(1, (void*) &addr, sizeof(uint)) > 0) {
+  int addr;
+  if (argint(0, &addr) != 0) {
     return FAILED;
   }
   int length; 
-  if (argptr(2, (void*) &length, sizeof(int)) > 0) {
+  if (argint(1, &length) != 0) {
     return FAILED;
   }
   int flags;
-  if (argptr(3, (void*) &flags, sizeof(int)) > 0) {
+  if (argint(2, &flags) != 0) {
     return FAILED;
   }
   int fd;
-  if (argptr(4, (void*) &fd, sizeof(int)) > 0) {
+  if (argint(3, &fd) != 0) {
     return FAILED;
   }
+
+  cprintf("wmap debug: addr=%d, len=%d, flags=%d, fd=%d\n", 
+    addr, length, flags, fd);
 
 	// Vaildate length
 	if (length <= 0) {
 		return FAILED;
 	}
-	int pages = (length / PAGE_SIZE) + ((length % PAGE_SIZE) != 0);
 
 	// Parse flags
 	if ((flags >= 16) | (flags < 0)) {
 		return FAILED;
 	}
-  /*
+  
 	int mapFixed = 0;
 	if (flags >= 8) {
 		mapFixed = 1;
 		flags -= 8;
 	}
+  /*
 	int mapAnonymous = 0;
 	if (flags >= 4) {
 		mapAnonymous = 1;
@@ -215,16 +218,35 @@ sys_wmap(void) {
 
 	// Get own process pointer
 	struct proc* myProc = myproc();
-	
-	// Allocate a page
-	char *mem = kalloc();
-	// For each page, place an entry in the page table
-	mappages(myProc->pgdir, (void*)0x60000000, 4096, V2P(mem), PTE_W | PTE_U);
-	
-	for (int i = 0; i < (pages - 1); i++) {
-		mem = kalloc();
-		mappages(myProc->pgdir, (void*)(0x60000000 + (PAGE_SIZE * (i + 1))), 4096, V2P(mem), PTE_W | PTE_U);
-	}
 
-  return SUCCESS;
+  int useAddr = 0x60000000;
+  if (mapFixed) {
+    useAddr = addr;
+  }
+
+  int thisMap = myProc->wmap.total_mmaps;
+  if (thisMap >= (MAX_WMMAP_INFO - 1)) {
+    // Too many maps
+    return FAILED;
+  }
+
+  // Set this map info, but don't alloc yet (lazy)
+  myProc->wmap.addr[thisMap] = useAddr;
+  myProc->wmap.length[thisMap] = length;
+  myProc->wmap.n_loaded_pages[thisMap] = 0;
+  myProc->wmap.total_mmaps++;
+
+  return useAddr;
 };
+
+int
+sys_wunmap(void) {
+  // TODO: Not implemented
+  return FAILED;
+}
+
+int
+sys_wremap(void) {
+  // TODO: Not implemented
+  return FAILED;
+}

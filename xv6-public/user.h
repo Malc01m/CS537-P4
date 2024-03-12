@@ -43,3 +43,6 @@ int atoi(const char*);
 //Custom syscalls
 int getpgdirinfo(struct pgdirinfo*);
 int getwmapinfo(struct wmapinfo*);
+uint wmap(uint addr, int length, int flags, int fd);
+uint wremap(uint oldaddr, int oldsize, int newsize, int flags);
+int wunmap(uint addr);
