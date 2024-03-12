@@ -81,9 +81,9 @@ trap(struct trapframe *tf)
     
   // Added for P4
   case T_PGFLT:
-    struct wmapinfo *wminfo;
+    struct wmapinfo wminfo;
     wminfo = myproc()->wmap;
-    if (wminfo->n_loaded_pages == 0) {
+    if (wminfo.n_loaded_pages == 0) {
       cprintf("Detected alloc - not implemented\n");
       break;
     } else {

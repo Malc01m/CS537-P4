@@ -151,7 +151,7 @@ sys_getwmapinfo(void) {
   struct proc *myProc = myproc();
 
   // Hand off wmap pointer
-  wminfo = myProc->wmap;
+  wminfo = &(myProc->wmap);
 
   return SUCCESS;
   
@@ -186,9 +186,6 @@ sys_wmap(void) {
 		return FAILED;
 	}
 
-  // Calculate number of pages needed
-	int pages = (length / PAGE_SIZE) + ((length % PAGE_SIZE) != 0);
-
 	// Parse flags
 	if ((flags >= 16) | (flags < 0)) {
 		return FAILED;
@@ -199,6 +196,7 @@ sys_wmap(void) {
 		mapFixed = 1;
 		flags -= 8;
 	}
+  /*
 	int mapAnonymous = 0;
 	if (flags >= 4) {
 		mapAnonymous = 1;
@@ -216,36 +214,29 @@ sys_wmap(void) {
 		}
 		mapPrivate = 1;
 	}
+  */
 
 	// Get own process pointer
 	struct proc* myProc = myproc();
-	
-  // Non-file-backed mapping
-  if (mapAnonymous) {
 
-    // Allocate a page
-    char *mem = kalloc();
+  int useAddr = 0x60000000;
+  if (mapFixed) {
+    useAddr = addr;
+  }
 
-    int useAddr = 0x60000000;
-    if (mapFixed) {
-      useAddr = addr;
-    }
-
-    // For each page, place an entry in the page table
-    mappages(myProc->pgdir, (void*)useAddr, 4096, V2P(mem), PTE_W | PTE_U);
-    
-    for (int i = 0; i < (pages - 1); i++) {
-      mem = kalloc();
-      mappages(myProc->pgdir, (void*)(useAddr + (PAGE_SIZE * (i + 1))), 4096, V2P(mem), PTE_W | PTE_U);
-    }
-
-  } else {
-    // File-backed, unimplemented
-    cprintf("wmap error: File-backed mapping not implemented\n");
+  int thisMap = myProc->wmap.total_mmaps;
+  if (thisMap >= (MAX_WMMAP_INFO - 1)) {
+    // Too many maps
     return FAILED;
   }
 
-  return SUCCESS;
+  // Set this map info, but don't alloc yet (lazy)
+  myProc->wmap.addr[thisMap] = useAddr;
+  myProc->wmap.length[thisMap] = length;
+  myProc->wmap.n_loaded_pages[thisMap] = 0;
+  myProc->wmap.total_mmaps++;
+
+  return useAddr;
 };
 
 int

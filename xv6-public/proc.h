@@ -53,7 +53,7 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   // Added for P4
-  struct wmapinfo wmap[MAX_WMMAP_INFO];
+  struct wmapinfo wmap;
 };
 
 // Process memory is laid out contiguously, low addresses first:
