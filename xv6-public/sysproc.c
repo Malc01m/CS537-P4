@@ -188,6 +188,7 @@ sys_wmap(void) {
 	if ((flags >= 16) | (flags < 0)) {
 		return FAILED;
 	}
+  /*
 	int mapFixed = 0;
 	if (flags >= 8) {
 		mapFixed = 1;
@@ -210,6 +211,7 @@ sys_wmap(void) {
 		}
 		mapPrivate = 1;
 	}
+  */
 
 	// Get own process pointer
 	struct proc* myProc = myproc();
@@ -217,10 +219,12 @@ sys_wmap(void) {
 	// Allocate a page
 	char *mem = kalloc();
 	// For each page, place an entry in the page table
-	mappages(myProc->pgdir, 0x60000000, 4096, V2P(mem), PTE_W | PTE_U);
+	mappages(myProc->pgdir, (void*)0x60000000, 4096, V2P(mem), PTE_W | PTE_U);
 	
 	for (int i = 0; i < (pages - 1); i++) {
 		mem = kalloc();
-		mappages(myProc->pgdir, 0x60000000 + (PAGE_SIZE * (i + 1)), 4096, V2P(mem), PTE_W | PTE_U);
+		mappages(myProc->pgdir, (void*)(0x60000000 + (PAGE_SIZE * (i + 1))), 4096, V2P(mem), PTE_W | PTE_U);
 	}
+
+  return SUCCESS;
 };
