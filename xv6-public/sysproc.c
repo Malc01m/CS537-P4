@@ -228,3 +228,15 @@ sys_wmap(void) {
 
   return SUCCESS;
 };
+
+int
+sys_wunmap(void) {
+  // TODO: Not implemented
+  return FAILED;
+}
+
+int
+sys_wremap(void) {
+  // TODO: Not implemented
+  return FAILED;
+}

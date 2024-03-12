@@ -106,6 +106,8 @@ extern int sys_uptime(void);
 extern int sys_getpgdirinfo(void);
 extern int sys_getwmapinfo(void);
 extern int sys_wmap(void);
+extern int sys_wunmap(void);
+extern int sys_wremap(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]         sys_fork,
@@ -132,6 +134,8 @@ static int (*syscalls[])(void) = {
 [SYS_getpgdirinfo] sys_getpgdirinfo,
 [SYS_getwmapinfo]  sys_getwmapinfo,
 [SYS_wmap]         sys_wmap,
+[SYS_wunmap]       sys_wunmap,
+[SYS_wremap]       sys_wremap,
 };
 
 void
