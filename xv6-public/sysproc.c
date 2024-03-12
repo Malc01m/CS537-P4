@@ -222,15 +222,46 @@ sys_wmap(void) {
 	// Get own process pointer
 	struct proc* myProc = myproc();
 
-  int useAddr = 0x60000000;
-  if (mapFixed) {
-    useAddr = addr;
-  }
-
   int thisMap = myProc->wmap.total_mmaps;
   if (thisMap >= (MAX_WMMAP_INFO - 1)) {
     // Too many maps
     return FAILED;
+  }
+
+  int useAddr;
+  if (mapFixed) {
+    useAddr = addr;
+    // Check for collisions
+    if (myProc->wmap.total_mmaps > 0) {
+      int lastLen = myProc->wmap.length[thisMap - 1];
+      int lastStart = myProc->wmap.addr[thisMap - 1];
+      if (lastStart + lastLen > useAddr) {
+        return FAILED;
+      }
+    }
+  } else {
+    useAddr = 0x60000000;
+    // Check for collisions
+    if (myProc->wmap.total_mmaps > 0) {
+      int recheck = 0;
+      do {
+        for (int i = 0; i < myProc->wmap.total_mmaps; i++) {
+          int lastStart = myProc->wmap.addr[i];
+          int lastEnd = lastStart + myProc->wmap.length[i];
+          int thisStart = useAddr;
+          int thisEnd = useAddr + length;
+          while (((thisStart > lastStart) && (thisStart < lastEnd)) ||
+              ((lastStart > thisStart) && (lastStart < thisEnd))) {
+            useAddr += PAGE_SIZE;
+            recheck = 1;
+            // Couldn't find a place
+            if ((useAddr + PAGE_SIZE) >= 0x80000000) {
+              return FAILED;
+            }
+          }
+        }
+      } while (recheck);
+    }
   }
 
   // Set this map info, but don't alloc yet (lazy)
