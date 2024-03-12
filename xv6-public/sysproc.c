@@ -161,34 +161,39 @@ int
 sys_wmap(void) {
 
   // Args
-  uint addr;
-  if (argptr(1, (void*) &addr, sizeof(uint)) > 0) {
+  int addr;
+  if (argint(0, &addr) != 0) {
     return FAILED;
   }
   int length; 
-  if (argptr(2, (void*) &length, sizeof(int)) > 0) {
+  if (argint(1, &length) != 0) {
     return FAILED;
   }
   int flags;
-  if (argptr(3, (void*) &flags, sizeof(int)) > 0) {
+  if (argint(2, &flags) != 0) {
     return FAILED;
   }
   int fd;
-  if (argptr(4, (void*) &fd, sizeof(int)) > 0) {
+  if (argint(3, &fd) != 0) {
     return FAILED;
   }
+
+  cprintf("wmap debug: addr=%d, len=%d, flags=%d, fd=%d\n", 
+    addr, length, flags, fd);
 
 	// Vaildate length
 	if (length <= 0) {
 		return FAILED;
 	}
+
+  // Calculate number of pages needed
 	int pages = (length / PAGE_SIZE) + ((length % PAGE_SIZE) != 0);
 
 	// Parse flags
 	if ((flags >= 16) | (flags < 0)) {
 		return FAILED;
 	}
-  /*
+  
 	int mapFixed = 0;
 	if (flags >= 8) {
 		mapFixed = 1;
@@ -211,20 +216,34 @@ sys_wmap(void) {
 		}
 		mapPrivate = 1;
 	}
-  */
 
 	// Get own process pointer
 	struct proc* myProc = myproc();
 	
-	// Allocate a page
-	char *mem = kalloc();
-	// For each page, place an entry in the page table
-	mappages(myProc->pgdir, (void*)0x60000000, 4096, V2P(mem), PTE_W | PTE_U);
-	
-	for (int i = 0; i < (pages - 1); i++) {
-		mem = kalloc();
-		mappages(myProc->pgdir, (void*)(0x60000000 + (PAGE_SIZE * (i + 1))), 4096, V2P(mem), PTE_W | PTE_U);
-	}
+  // Non-file-backed mapping
+  if (mapAnonymous) {
+
+    // Allocate a page
+    char *mem = kalloc();
+
+    int useAddr = 0x60000000;
+    if (mapFixed) {
+      useAddr = addr;
+    }
+
+    // For each page, place an entry in the page table
+    mappages(myProc->pgdir, (void*)useAddr, 4096, V2P(mem), PTE_W | PTE_U);
+    
+    for (int i = 0; i < (pages - 1); i++) {
+      mem = kalloc();
+      mappages(myProc->pgdir, (void*)(useAddr + (PAGE_SIZE * (i + 1))), 4096, V2P(mem), PTE_W | PTE_U);
+    }
+
+  } else {
+    // File-backed, unimplemented
+    cprintf("wmap error: File-backed mapping not implemented\n");
+    return FAILED;
+  }
 
   return SUCCESS;
 };
