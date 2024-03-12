@@ -225,15 +225,12 @@ sys_wmap(void) {
     return FAILED;
   }
 
-  int useAddr;
   if (mapFixed) {
 
     // Check addr within range
     if ((addr < 0x60000000) || (addr > 0x80000000)) {
       return FAILED;
     }
-
-    useAddr = addr;
 
     // Check for collisions - can't move
     for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
@@ -248,7 +245,11 @@ sys_wmap(void) {
 
   } else {
 
-    useAddr = 0x60000000;
+    // Completely ignore address suggestion
+    // Nothing's sorted, so we'll just decide space 
+    // is full when we hit the end while incrementing and
+    // failing to find a space with no collisions
+    addr = 0x60000000;
 
     // Check for collisions
     if (myProc->wmap.total_mmaps > 0) {
@@ -261,11 +262,11 @@ sys_wmap(void) {
           int otherEnd = otherStart + myproc()->wmap.length[i];
 
           // Check if any other mapping starts or ends within the span of this mapping
-          if (((otherStart <= (useAddr + length)) && (otherStart >= useAddr)) ||
-              ((otherEnd <= (useAddr + length)) && (otherEnd >= useAddr))) {
+          if (((otherStart <= (addr + length)) && (otherStart >= addr)) ||
+              ((otherEnd <= (addr + length)) && (otherEnd >= addr))) {
 
-            useAddr += PAGE_SIZE;
-            if ((useAddr + length) >= 0x80000000) {
+            addr += PAGE_SIZE;
+            if ((addr + length) >= 0x80000000) {
               return FAILED;
             } else {
               recheck = 1;
@@ -280,13 +281,13 @@ sys_wmap(void) {
   }
 
   // Set this map info, but don't alloc yet (lazy)
-  myProc->wmap.addr[thisMap] = useAddr;
+  myProc->wmap.addr[thisMap] = addr;
   myProc->wmap.length[thisMap] = length;
   myProc->wmap.n_loaded_pages[thisMap] = 0;
   myProc->wmap.total_mmaps++;
   myProc->wmap.anon[thisMap] = mapAnonymous;
 
-  return useAddr;
+  return addr;
 };
 
 int
@@ -316,10 +317,6 @@ sys_wremap(void) {
     return FAILED;
   }
 
-  // Get process pointer
-  int thisStart = oldaddr;
-  int thisEnd = oldaddr + newsize;
-
   // Find our index
   int foundInd = -1;
   for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
@@ -337,8 +334,8 @@ sys_wremap(void) {
       int otherStart = myproc()->wmap.addr[i];
       int otherEnd = otherStart + myproc()->wmap.length[i];
       // Check if any other mapping starts or ends within the span of this mapping
-      if (((otherStart <= thisEnd) && (otherStart >= thisStart)) ||
-          ((otherEnd <= thisEnd) && (otherEnd >= thisStart))) {
+      if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
+          ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
         return FAILED;
       }
     }
