@@ -99,7 +99,7 @@ sys_getpgdirinfo(void){
   int i,j;
 
   if (argptr(0, (void *)&info, sizeof(struct pgdirinfo*))<0)
-    return -1;
+    return FAILED;
   
 memset(&localinfo, 0, sizeof(localinfo));
 
@@ -131,7 +131,20 @@ for (i = 0; i < NPDENTRIES && count < MAX_UPAGE_INFO; i++)
 localinfo.n_upages = count;
 
 if (copyout(myproc()-> pgdir, (uint)info, (char *)&localinfo, sizeof(localinfo)) < 0)
-  return -1;
+  return FAILED;
 
-return 0;
+return SUCCESS;
+}
+
+int
+sys_wunmap(void)
+{
+  uint addr;
+
+  // Check for fetching the argument and page alignment
+  if ((argint(0, (int*)&addr) < 0) || (addr % PGSIZE != 0))
+  {
+    return FAILED;
+  }
+  return SUCCESS;
 }

@@ -40,5 +40,6 @@ void free(void*);
 int atoi(const char*);
 
 
-//Custom syscalls
+// sysproc.c
 int getpgdirinfo(struct pgdirinfo*);
+int wunmap(uint addr);
