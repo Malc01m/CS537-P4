@@ -83,7 +83,6 @@ trap(struct trapframe *tf)
   case T_PGFLT:
 
     uint faultAddr = rcr2();
-    cprintf("T_PGFLT debug: Attempt to access virtual %x\n", faultAddr);
     struct wmapinfo *proc_wmap = &(myproc()->wmap);
 
     int mapIndx = -1;
@@ -100,7 +99,6 @@ trap(struct trapframe *tf)
 
       // Alloc (needs more work)
       int thispgaddr = (faultAddr / 4096) * 4096;
-      cprintf("T_PGFLT debug: Allocing page at %x\n", thispgaddr);
       char *mem = kalloc();
       mappages(myproc()->pgdir, (void*)thispgaddr, 4096, V2P(mem), PTE_W | PTE_U);
       myproc()->wmap.n_loaded_pages[mapIndx]++;
