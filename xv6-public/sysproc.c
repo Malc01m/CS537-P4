@@ -381,9 +381,38 @@ sys_wremap(void) {
     
   } else if (flags == MREMAP_MAYMOVE) {
 
+    // Start back at the top, so we know space is full 
+    // if we search past the end
+    oldaddr = 0x6000000;
+
+    int recheck;
+    do {
+      recheck = 0;
+
+      // Check for collisions, move if needed
+      for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+
+        int otherStart = myproc()->wmap.addr[i];
+        int otherEnd = otherStart + myproc()->wmap.length[i];
+
+        // Check if any other mapping starts or ends within the span of this mapping
+        if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
+            ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
+
+          oldaddr += PAGE_SIZE;
+          if ((oldaddr + newsize) >= 0x80000000) {
+            return FAILED;
+          } else {
+            recheck = 1;
+            break;
+          } 
+        }
+      }
+    } while (recheck);
+    
   } else {
     return FAILED;
   }
 
-  return SUCCESS;
+  return oldaddr;
 }
