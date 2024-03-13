@@ -181,7 +181,7 @@ sys_wmap(void) {
     return FAILED;
   }
 
-  cprintf("wmap debug: addr=%d, len=%d, flags=%d, fd=%d\n", 
+  cprintf("wmap debug: addr=%x, len=%d, flags=%d, fd=%d\n", 
     addr, length, flags, fd);
 
 	// Vaildate length
@@ -237,8 +237,9 @@ sys_wmap(void) {
       int otherStart = myproc()->wmap.addr[i];
       int otherEnd = otherStart + myproc()->wmap.length[i];
       // Check if any other mapping starts or ends within the span of this mapping
-      if (((otherStart <= (addr + length)) && (otherStart >= addr)) ||
-          ((otherEnd <= (addr + length)) && (otherEnd >= addr))) {
+      if (((otherStart <= (addr + length - 1)) && (otherStart >= addr)) ||
+          ((otherEnd <= (addr + length - 1)) && (otherEnd >= addr))) {
+        cprintf("wmap debug: Failed due to insufficient space for fixed addr\n");
         return FAILED;
       }
     }
@@ -262,11 +263,12 @@ sys_wmap(void) {
           int otherEnd = otherStart + myproc()->wmap.length[i];
 
           // Check if any other mapping starts or ends within the span of this mapping
-          if (((otherStart <= (addr + length)) && (otherStart >= addr)) ||
-              ((otherEnd <= (addr + length)) && (otherEnd >= addr))) {
+          if (((otherStart <= (addr + length - 1)) && (otherStart >= addr - 1)) ||
+              ((otherEnd <= (addr + length - 1)) && (otherEnd >= addr - 1))) {
 
             addr += PAGE_SIZE;
             if ((addr + length) >= 0x80000000) {
+              cprintf("wmap debug: Failed due to insufficient space for non-fixed addr\n");
               return FAILED;
             } else {
               recheck = 1;
@@ -383,8 +385,8 @@ sys_wremap(void) {
         int otherStart = myproc()->wmap.addr[i];
         int otherEnd = otherStart + myproc()->wmap.length[i];
         // Check if any other mapping starts or ends within the span of this mapping
-        if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
-            ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
+        if (((otherStart <= (oldaddr + newsize - 1)) && (otherStart >= oldaddr)) ||
+            ((otherEnd <= (oldaddr + newsize - 1)) && (otherEnd >= oldaddr))) {
           cprintf("wremap debug: Failed due to no space\n");
           return FAILED;
         }
@@ -404,8 +406,8 @@ sys_wremap(void) {
         int otherStart = myproc()->wmap.addr[i];
         int otherEnd = otherStart + myproc()->wmap.length[i];
         // Check if any other mapping starts or ends within the span of this mapping
-        if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
-            ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
+        if (((otherStart <= (oldaddr + newsize - 1)) && (otherStart >= oldaddr)) ||
+            ((otherEnd <= (oldaddr + newsize - 1)) && (otherEnd >= oldaddr))) {
           canStay = 0;
           break;
         }
@@ -448,8 +450,7 @@ sys_wremap(void) {
           }
         }
       } while (recheck);
-
-      // Move to found spot and resize
+      
       myproc()->wmap.length[foundInd] = newsize;
       myproc()->wmap.addr[foundInd] = oldaddr;
 
