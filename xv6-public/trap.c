@@ -7,6 +7,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
+#include "wmap.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -77,6 +78,40 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+    
+  // Added for P4
+  case T_PGFLT:
+
+    int faultAddr = rcr2();
+    struct wmapinfo *proc_wmap = &(myproc()->wmap);
+
+    int mapIndx = -1;
+    for (int i = 0; i < proc_wmap->total_mmaps; i++) {
+      int start = proc_wmap->addr[i];
+      int end = proc_wmap->addr[i] + proc_wmap->length[i];
+      if (start > faultAddr && end < faultAddr) {
+        mapIndx = i;
+      }
+    }
+
+    // Is mapped?
+    if (mapIndx != -1) {
+
+      // Alloc (needs more work)
+      char *faultAddr = kalloc();
+      mappages(myproc()->pgdir, &(myproc()->wmap.addr[mapIndx]), 4096, V2P(faultAddr), PTE_W | PTE_U);
+      myproc()->wmap.n_loaded_pages[mapIndx]++;
+      break;
+
+    } else {
+
+      // No access
+      cprintf("Segmentation Fault\n");
+      // Not sure if I'm actually killing it here.
+      myproc()->killed = 1;
+      break;
+
+    }
 
   //PAGEBREAK: 13
   default:

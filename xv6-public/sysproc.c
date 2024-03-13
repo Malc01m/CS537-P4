@@ -8,6 +8,8 @@
 #include "proc.h"
 #include "wmap.h"
 
+#define PAGE_SIZE 4096
+
 int
 sys_fork(void)
 {
@@ -120,7 +122,7 @@ for (i = 0; i < NPDENTRIES && count < MAX_UPAGE_INFO; i++)
       // Ensure page table is present and available to the user
       if ((pte & PTE_P) && (pte & PTE_U)) 
       {
-        uint va = (i << PDXSHIFT) | (pte & PTE_U);
+        uint va = (i << PDXSHIFT) | (j << PTXSHIFT);
         localinfo.va[count] = va;
         localinfo.pa[count] = PTE_ADDR(pte) | (va & 0xFFF);
         count++;
@@ -131,7 +133,224 @@ for (i = 0; i < NPDENTRIES && count < MAX_UPAGE_INFO; i++)
 localinfo.n_upages = count;
 
 if (copyout(myproc()-> pgdir, (uint)info, (char *)&localinfo, sizeof(localinfo)) < 0)
-  return FAILED;
+  return -1;
 
-return SUCCESS;
+return 0;
+}
+
+int 
+sys_getwmapinfo(void) {
+
+ struct wmapinfo *wminfo;
+
+ //Check if argptr gets the pointer successfully
+  if (argptr(0, (void*) & wminfo, sizeof(struct wmapinfo*)) < 0)
+  {
+    return -1;
+  }
+
+  struct proc *myProc = myproc();
+
+  // Copy from kernel to user space
+  if (copyout(myProc->pgdir, (uint)wminfo, (char *) & (myProc->wmap), sizeof(struct wmapinfo)) < 0)
+  {
+    return -1;
+  }
+
+  return 0;
+}
+
+int
+sys_wmap(void) {
+
+  // Args
+  int addr;
+  if (argint(0, &addr) != 0) {
+    return FAILED;
+  }
+  int length; 
+  if (argint(1, &length) != 0) {
+    return FAILED;
+  }
+  int flags;
+  if (argint(2, &flags) != 0) {
+    return FAILED;
+  }
+  int fd;
+  if (argint(3, &fd) != 0) {
+    return FAILED;
+  }
+
+  cprintf("wmap debug: addr=%d, len=%d, flags=%d, fd=%d\n", 
+    addr, length, flags, fd);
+
+	// Vaildate length
+	if (length <= 0) {
+		return FAILED;
+	}
+
+	// Parse flags
+	if ((flags >= 16) | (flags < 0)) {
+		return FAILED;
+	}
+  
+	int mapFixed = 0;
+	if (flags >= 8) {
+		mapFixed = 1;
+		flags -= 8;
+	}
+	int mapAnonymous = 0;
+	if (flags >= 4) {
+		mapAnonymous = 1;
+		flags -= 4;
+	}
+	int mapShared = 0;
+	if (flags >= 2) {
+		mapShared = 1;
+		flags -= 2;
+	}
+  // Private is true if shared isn't
+	if (flags >= 1) {
+		if (mapShared) {
+			return FAILED;
+		}
+	}
+
+	// Get own process pointer
+	struct proc* myProc = myproc();
+
+  int thisMap = myProc->wmap.total_mmaps;
+  if (thisMap >= (MAX_WMMAP_INFO - 1)) {
+    // Too many maps
+    return FAILED;
+  }
+
+  int useAddr;
+  if (mapFixed) {
+
+    // Check addr within range
+    if ((addr < 0x60000000) || (addr > 0x80000000)) {
+      return FAILED;
+    }
+
+    useAddr = addr;
+
+    // Check for collisions - can't move
+    for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+      int otherStart = myproc()->wmap.addr[i];
+      int otherEnd = otherStart + myproc()->wmap.length[i];
+      // Check if any other mapping starts or ends within the span of this mapping
+      if (((otherStart <= (addr + length)) && (otherStart >= addr)) ||
+          ((otherEnd <= (addr + length)) && (otherEnd >= addr))) {
+        return FAILED;
+      }
+    }
+
+  } else {
+
+    useAddr = 0x60000000;
+
+    // Check for collisions
+    if (myProc->wmap.total_mmaps > 0) {
+      int recheck;
+      do {
+        recheck = 0;
+        for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+
+          int otherStart = myproc()->wmap.addr[i];
+          int otherEnd = otherStart + myproc()->wmap.length[i];
+
+          // Check if any other mapping starts or ends within the span of this mapping
+          if (((otherStart <= (useAddr + length)) && (otherStart >= useAddr)) ||
+              ((otherEnd <= (useAddr + length)) && (otherEnd >= useAddr))) {
+
+            useAddr += PAGE_SIZE;
+            if ((useAddr + length) >= 0x80000000) {
+              return FAILED;
+            } else {
+              recheck = 1;
+              break;
+            }
+
+          }
+        }
+      } while (recheck);
+
+    }
+  }
+
+  // Set this map info, but don't alloc yet (lazy)
+  myProc->wmap.addr[thisMap] = useAddr;
+  myProc->wmap.length[thisMap] = length;
+  myProc->wmap.n_loaded_pages[thisMap] = 0;
+  myProc->wmap.total_mmaps++;
+  myProc->wmap.anon[thisMap] = mapAnonymous;
+
+  return useAddr;
+};
+
+int
+sys_wunmap(void) {
+  // TODO: Not implemented
+  return FAILED;
+}
+
+int
+sys_wremap(void) {
+
+  // Args
+  int oldaddr;
+  if (argint(0, &oldaddr) != 0) {
+    return FAILED;
+  }
+  int oldsize; 
+  if (argint(1, &oldsize) != 0) {
+    return FAILED;
+  }
+  int newsize;
+  if (argint(2, &newsize) != 0) {
+    return FAILED;
+  }
+  int flags;
+  if (argint(3, &flags) != 0) {
+    return FAILED;
+  }
+
+  // Get process pointer
+  int thisStart = oldaddr;
+  int thisEnd = oldaddr + newsize;
+
+  // Find our index
+  int foundInd = -1;
+  for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+    if (myproc()->wmap.addr[i] == oldaddr) {
+      foundInd = i;
+    }
+  }
+  if (foundInd == -1) {
+    return FAILED;
+  }
+
+  if (flags == 0) {
+    // Check for collisions - can't move
+    for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+      int otherStart = myproc()->wmap.addr[i];
+      int otherEnd = otherStart + myproc()->wmap.length[i];
+      // Check if any other mapping starts or ends within the span of this mapping
+      if (((otherStart <= thisEnd) && (otherStart >= thisStart)) ||
+          ((otherEnd <= thisEnd) && (otherEnd >= thisStart))) {
+        return FAILED;
+      }
+    }
+
+    // We're ok to expand
+    myproc()->wmap.length[foundInd] = newsize;
+    
+  } else if (flags == MREMAP_MAYMOVE) {
+
+  } else {
+    return FAILED;
+  }
+
+  return SUCCESS;
 }
