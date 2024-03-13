@@ -289,6 +289,10 @@ sys_wmap(void) {
   myProc->wmap.total_mmaps++;
   myProc->wmap.anon[thisMap] = mapAnonymous;
 
+  // Implementing File-Backed Mapping- BW
+  myProc->wmap.fd[thisMap] = mapAnonymous ? -1 : fd;
+  myProc->wmap.shared[thisMap] = mapShared;
+
   return addr;
 };
 
@@ -319,7 +323,21 @@ sys_wunmap(void) {
     return FAILED;
   }
 
-  //TODO: Implement file-backed mapping here...
+  // START File backed mapping section
+  if (!currproc->wmap.anon[finder] && currproc->wmap.shared[finder])
+  {
+    int fd = currproc->wmap.fd[finder];
+    if (fd >= 0)
+    {
+      struct file *f = currproc->ofile[fd];
+
+      if (f)
+      {
+        filewrite(f, (char *)addr,currproc->wmap.length[finder]);
+      }
+    }
+  }
+  // END File backed mapping section
 
   // Deallocate memory region
   uint oldsz = currproc->wmap.addr[finder] + currproc->wmap.length[finder];
@@ -336,6 +354,9 @@ sys_wunmap(void) {
     currproc->wmap.length[i] = currproc->wmap.length[i + 1];
     currproc->wmap.n_loaded_pages[i] = currproc->wmap.n_loaded_pages[i + 1];
     currproc->wmap.anon[i] = currproc->wmap.anon[i + 1];
+    // File backed mapping related elements -BW
+    currproc->wmap.fd[i] = currproc->wmap.fd[i + 1];
+    currproc->wmap.shared[i] = currproc->wmap.shared[i];
   }
   currproc->wmap.total_mmaps--;
   return SUCCESS;

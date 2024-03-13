@@ -30,6 +30,9 @@ struct wmapinfo {
     int n_loaded_pages[MAX_WMMAP_INFO]; // Number of pages physically loaded into memory
     // Added fields
     int anon[MAX_WMMAP_INFO];
+    // File-Backed Mapping Additions -BW
+    int fd[MAX_WMMAP_INFO];     // File descriptor of the mapping
+    int shared[MAX_WMMAP_INFO]; // Holds value if mapping is shared
 };
 
 #endif
