@@ -291,8 +291,44 @@ sys_wmap(void) {
 
 int
 sys_wunmap(void) {
-  // TODO: Not implemented
-  return FAILED;
+  int addr;
+
+  if (argint(0, &addr) < 0)
+  {
+    return FAILED;
+  }
+
+  struct proc *currproc = myproc();
+  int finder = -1;
+
+  //Try to find the mapping by the address
+  for (int i = 0; i < currproc->wmap.total_mmaps; i++)
+  {
+    if (currproc->wmap.addr[i] == addr)
+    {
+      finder = i;
+      break;
+    }
+  }
+
+  if (finder == -1)
+  {
+    return FAILED;
+  }
+
+  //TODO: Implement file-backed mapping here...
+
+  //Remove mapping
+  for (int i = 0; i < currproc->wmap.total_mmaps -1; i++)
+  {
+    currproc->wmap.addr[i] = currproc->wmap.addr[i + 1];
+    currproc->wmap.length[i] = currproc->wmap.length[i + 1];
+    currproc->wmap.n_loaded_pages[i] = currproc->wmap.n_loaded_pages[i + 1];
+    currproc->wmap.anon[i] = currproc->wmap.anon[i + 1];
+  }
+  currproc->wmap.total_mmaps--;
+
+  return SUCCESS;
 }
 
 int
