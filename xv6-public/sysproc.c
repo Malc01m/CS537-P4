@@ -324,13 +324,18 @@ sys_wunmap(void) {
   }
 
   // START File backed mapping section
-  if (currproc->wmap.shared[finder] && currproc->wmap.fd[finder] != -1)
+  if (!currproc->wmap.anon[finder] && currproc->wmap.shared[finder])
   {
-    int filesize = currproc-> wmap.length[finder];
     int fd = currproc->wmap.fd[finder];
-    char *buffer = (char *)addr;
+    if (fd >= 0)
+    {
+      struct file *f = currproc->ofile[fd];
 
-    // TODO: Implement file-backed mapping here...
+      if (f)
+      {
+        filewrite(f, (char *)addr,currproc->wmap.length[finder]);
+      }
+    }
   }
   // END File backed mapping section
 
