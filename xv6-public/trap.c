@@ -98,9 +98,10 @@ trap(struct trapframe *tf)
     if (mapIndx != -1) {
 
       // Alloc (needs more work)
-      int thispgaddr = (faultAddr / 4096) * 4096;
+      int thispgaddr = (faultAddr / PGSIZE) * PGSIZE;
       char *mem = kalloc();
-      mappages(myproc()->pgdir, (void*)thispgaddr, 4096, V2P(mem), PTE_W | PTE_U);
+      memset(mem, 0, PGSIZE);
+      mappages(myproc()->pgdir, (void*)thispgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U);
       myproc()->wmap.n_loaded_pages[mapIndx]++;
       break;
 
