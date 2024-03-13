@@ -99,13 +99,11 @@ trap(struct trapframe *tf)
     if (mapIndx != -1) {
 
       // Alloc (needs more work)
-      for (int i = 0; i < (proc_wmap->length[mapIndx] / 4096); i++) {
-      	cprintf("T_PGFLT debug: Allocing %d-th page at %x\n", i, proc_wmap->addr[mapIndx] + (4096 * i));
-        char *mem = kalloc();
-        int thispgaddr = myproc()->wmap.addr[mapIndx] + (4096 * i);
-        mappages(myproc()->pgdir, (void*)thispgaddr, 4096, V2P(mem), PTE_W | PTE_U);
-        myproc()->wmap.n_loaded_pages[mapIndx]++;
-      }
+      int thispgaddr = (faultAddr / 4096) * 4096;
+      cprintf("T_PGFLT debug: Allocing page at %x\n", thispgaddr);
+      char *mem = kalloc();
+      mappages(myproc()->pgdir, (void*)thispgaddr, 4096, V2P(mem), PTE_W | PTE_U);
+      myproc()->wmap.n_loaded_pages[mapIndx]++;
       break;
 
     } else {
