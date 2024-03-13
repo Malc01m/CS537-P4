@@ -319,16 +319,8 @@ sys_wunmap(void) {
 
   //TODO: Implement file-backed mapping here...
 
-  // Deallocate memory region
-  uint oldsz = currproc->wmap.addr[finder] + currproc->wmap.length[finder];
-  uint newsz = currproc->wmap.addr[finder];
-  if ((deallocuvm(currproc->pgdir, oldsz, newsz) == 0))
-  {
-    return FAILED;
-  }
-
   //Remove mapping
-  for (int i = finder; i < currproc->wmap.total_mmaps -1; i++)
+  for (int i = 0; i < currproc->wmap.total_mmaps -1; i++)
   {
     currproc->wmap.addr[i] = currproc->wmap.addr[i + 1];
     currproc->wmap.length[i] = currproc->wmap.length[i + 1];
@@ -336,6 +328,7 @@ sys_wunmap(void) {
     currproc->wmap.anon[i] = currproc->wmap.anon[i + 1];
   }
   currproc->wmap.total_mmaps--;
+
   return SUCCESS;
 }
 
