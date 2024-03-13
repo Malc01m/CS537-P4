@@ -360,6 +360,9 @@ sys_wremap(void) {
     return FAILED;
   }
 
+  cprintf("wremap debug: oldaddr=%x, oldsize=%d, newsize=%d, flags=%d\n",
+    oldaddr, oldsize, newsize, flags);
+
   // Find our index
   int foundInd = -1;
   for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
@@ -368,18 +371,23 @@ sys_wremap(void) {
     }
   }
   if (foundInd == -1) {
+    cprintf("wremap debug: Failed due to addr not found\n");
     return FAILED;
   }
 
   if (flags == 0) {
     // Check for collisions - can't move
     for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
-      int otherStart = myproc()->wmap.addr[i];
-      int otherEnd = otherStart + myproc()->wmap.length[i];
-      // Check if any other mapping starts or ends within the span of this mapping
-      if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
-          ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
-        return FAILED;
+      // Don't test collision with self - will always fail
+      if (i != foundInd) {
+        int otherStart = myproc()->wmap.addr[i];
+        int otherEnd = otherStart + myproc()->wmap.length[i];
+        // Check if any other mapping starts or ends within the span of this mapping
+        if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
+            ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
+          cprintf("wremap debug: Failed due to no space\n");
+          return FAILED;
+        }
       }
     }
 
@@ -388,9 +396,70 @@ sys_wremap(void) {
     
   } else if (flags == MREMAP_MAYMOVE) {
 
+    // Can we stay in place?
+    int canStay = 1;
+    for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+      // Don't test collision with self - will always fail
+      if (i != foundInd) {
+        int otherStart = myproc()->wmap.addr[i];
+        int otherEnd = otherStart + myproc()->wmap.length[i];
+        // Check if any other mapping starts or ends within the span of this mapping
+        if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
+            ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
+          canStay = 0;
+          break;
+        }
+      }
+    }
+
+    if (canStay) {
+
+      // Resize in place
+      myproc()->wmap.length[foundInd] = newsize;
+
+    } else {
+
+      // Start back at the top, so we know space is full 
+      // if we search past the end
+      oldaddr = 0x6000000;
+
+      int recheck;
+      do {
+        recheck = 0;
+
+        // Check for collisions, move if needed
+        for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+
+          int otherStart = myproc()->wmap.addr[i];
+          int otherEnd = otherStart + myproc()->wmap.length[i];
+
+          // Check if any other mapping starts or ends within the span of this mapping
+          if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
+              ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
+
+            oldaddr += PAGE_SIZE;
+            if ((oldaddr + newsize) >= 0x80000000) {
+              cprintf("wremap debug: Failed due to no space\n");
+              return FAILED;
+            } else {
+              recheck = 1;
+              break;
+            } 
+          }
+        }
+      } while (recheck);
+
+      // Move to found spot and resize
+      myproc()->wmap.length[foundInd] = newsize;
+      myproc()->wmap.addr[foundInd] = oldaddr;
+
+    }
+    
   } else {
+    cprintf("wremap debug: Failed due to bad flags\n");
     return FAILED;
   }
 
-  return SUCCESS;
+  cprintf("wremap debug: Success, addr %x\n", oldaddr);
+  return oldaddr;
 }

@@ -199,6 +199,8 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  // Added P4
+  np->wmap = curproc->wmap;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -241,6 +243,16 @@ exit(void)
       curproc->ofile[fd] = 0;
     }
   }
+
+  // Added P4 - Remove all mappings
+  /*
+  int maps = curproc->wmap.total_mmaps;
+  for (int i = 0; i < maps; i++) {
+    pte_t *pte = walkpgdir(curproc->pgdir, curproc->wmap.addr[i], 0);
+    uint physical_address = PTE_ADDR(*pte);
+    kfree(P2V(physical_address));
+  }
+  */
 
   begin_op();
   iput(curproc->cwd);
