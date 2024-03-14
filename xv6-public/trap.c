@@ -92,7 +92,7 @@ trap(struct trapframe *tf)
     for (int i = 0; i < proc_wmap->total_mmaps; i++) {
       uint start = proc_wmap->addr[i];
       uint end = proc_wmap->addr[i] + proc_wmap->length[i];
-      if ((start <= faultAddr) && (end >= faultAddr)) {
+      if ((start <= faultAddr) && (end > faultAddr)) {
         mapIndx = i;
       }
     }
@@ -101,28 +101,26 @@ trap(struct trapframe *tf)
     if (mapIndx != -1) {
 
       // Alloc
-      int thispgaddr = (faultAddr / PGSIZE) * PGSIZE;
+      int thispgaddr = PGROUNDDOWN(faultAddr);
       char *mem = kalloc();
-      if (!myproc()->wmap.anon[mapIndx]) {
-        memset(mem, 0, PGSIZE);
-        struct file* fptr = myproc()->wmap.fptr[mapIndx];
-        fileread(fptr, mem, PGSIZE);
-      } else {
-        memset(mem, 0, PGSIZE);
+      if (mem == 0){
+        break;
       }
-      mappages(myproc()->pgdir, (void*)thispgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U);
-      myproc()->wmap.n_loaded_pages[mapIndx]++;
-      break;
-
-    } else {
-
-      // No access
-      cprintf("Segmentation Fault\n");
-      // Not sure if I'm actually killing it here.
-      myproc()->killed = 1;
-      break;
-
+      memset(mem, 0, PGSIZE);
+     if (!myproc()->wmap.anon[mapIndx]) {
+      struct file* fptr = myproc()->wmap.fptr[mapIndx];
+      int fileOffset = thispgaddr - proc_wmap->addr[mapIndx];
+      ilock(fptr->ip);
+      readi(fptr->ip, mem, fileOffset, PGSIZE);
+      iunlock(fptr->ip);
     }
+    mappages(myproc()->pgdir, (void*)thispgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U);
+    myproc()->wmap.n_loaded_pages[mapIndx]++;
+  } else {
+    cprintf("sseg fault\n");
+    myproc()->killed = 1;
+  }
+  break;
 
   //PAGEBREAK: 13
   default:
