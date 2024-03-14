@@ -8,6 +8,9 @@
 #include "traps.h"
 #include "spinlock.h"
 #include "wmap.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -97,10 +100,16 @@ trap(struct trapframe *tf)
     // Is mapped?
     if (mapIndx != -1) {
 
-      // Alloc (needs more work)
+      // Alloc
       int thispgaddr = (faultAddr / PGSIZE) * PGSIZE;
       char *mem = kalloc();
-      memset(mem, 0, PGSIZE);
+      if (!myproc()->wmap.anon[mapIndx]) {
+        memset(mem, 0, PGSIZE);
+        struct file* fptr = myproc()->wmap.fptr[mapIndx];
+        fileread(fptr, mem, PGSIZE);
+      } else {
+        memset(mem, 0, PGSIZE);
+      }
       mappages(myproc()->pgdir, (void*)thispgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U);
       myproc()->wmap.n_loaded_pages[mapIndx]++;
       break;
