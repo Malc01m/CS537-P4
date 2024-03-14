@@ -290,7 +290,10 @@ sys_wmap(void) {
   myProc->wmap.anon[thisMap] = mapAnonymous;
 
   // Implementing File-Backed Mapping- BW
-  myProc->wmap.fd[thisMap] = mapAnonymous ? -1 : fd;
+  if (!mapAnonymous) {
+    filedup(myProc->ofile[fd]); // Keep fd alive
+  }
+  myProc->wmap.fptr[thisMap] = mapAnonymous ? 0 : myProc->ofile[fd];
   myProc->wmap.shared[thisMap] = mapShared;
 
   return addr;
@@ -326,15 +329,11 @@ sys_wunmap(void) {
   // START File backed mapping section
   if (!currproc->wmap.anon[finder] && currproc->wmap.shared[finder])
   {
-    int fd = currproc->wmap.fd[finder];
-    if (fd >= 0)
-    {
-      struct file *f = currproc->ofile[fd];
+    struct file *f = currproc->wmap.fptr[finder];
 
-      if (f)
-      {
-        filewrite(f, (char *)addr,currproc->wmap.length[finder]);
-      }
+    if (f)
+    {
+      filewrite(f, (char *)addr,currproc->wmap.length[finder]);
     }
   }
   // END File backed mapping section
@@ -355,7 +354,7 @@ sys_wunmap(void) {
     currproc->wmap.n_loaded_pages[i] = currproc->wmap.n_loaded_pages[i + 1];
     currproc->wmap.anon[i] = currproc->wmap.anon[i + 1];
     // File backed mapping related elements -BW
-    currproc->wmap.fd[i] = currproc->wmap.fd[i + 1];
+    currproc->wmap.fptr[i] = currproc->wmap.fptr[i + 1];
     currproc->wmap.shared[i] = currproc->wmap.shared[i];
   }
   currproc->wmap.total_mmaps--;

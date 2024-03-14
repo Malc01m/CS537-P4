@@ -31,7 +31,7 @@ struct wmapinfo {
     // Added fields
     int anon[MAX_WMMAP_INFO];
     // File-Backed Mapping Additions -BW
-    int fd[MAX_WMMAP_INFO];     // File descriptor of the mapping
+    struct file* fptr[MAX_WMMAP_INFO];     // File descriptor of the mapping
     int shared[MAX_WMMAP_INFO]; // Holds value if mapping is shared
 };
 
