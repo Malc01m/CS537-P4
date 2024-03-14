@@ -477,13 +477,10 @@ sys_wremap(void) {
 
       // De-alloc any yielded space
       if (oldsize > newsize) {
-        int rmpages = (oldsize - newsize) / PGSIZE;
-        for (int i = 0; i < rmpages; i++) {
-          uint oldsz = oldaddr + oldsize;
-          uint newsz = oldaddr + newsize;
-          if ((deallocuvm(myproc()->pgdir, oldsz, newsz) == 0)) {
-            return FAILED;
-          }
+        uint oldsz = oldaddr + oldsize;
+        uint newsz = oldaddr + newsize;
+        if ((deallocuvm(myproc()->pgdir, oldsz, newsz) == 0)) {
+          return FAILED;
         }
       }
       
