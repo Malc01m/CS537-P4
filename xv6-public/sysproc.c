@@ -133,7 +133,7 @@ for (i = 0; i < NPDENTRIES && count < MAX_UPAGE_INFO; i++)
 localinfo.n_upages = count;
 
 if (copyout(myproc()-> pgdir, (uint)info, (char *)&localinfo, sizeof(localinfo)) < 0)
-  return -1;
+  return FAILED;
 
 return 0;
 }
@@ -146,7 +146,7 @@ sys_getwmapinfo(void) {
  //Check if argptr gets the pointer successfully
   if (argptr(0, (void*) & wminfo, sizeof(struct wmapinfo*)) < 0)
   {
-    return -1;
+    return FAILED;
   }
 
   struct proc *myProc = myproc();
@@ -154,7 +154,7 @@ sys_getwmapinfo(void) {
   // Copy from kernel to user space
   if (copyout(myProc->pgdir, (uint)wminfo, (char *) & (myProc->wmap), sizeof(struct wmapinfo)) < 0)
   {
-    return -1;
+    return FAILED;
   }
 
   return 0;
