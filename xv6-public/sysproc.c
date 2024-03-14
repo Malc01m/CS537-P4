@@ -473,15 +473,6 @@ sys_wremap(void) {
           }
         }
       } while (recheck);
-
-      // De-alloc any yielded space
-      if (oldsize > newsize) {
-        uint oldsz = oldaddr + oldsize;
-        uint newsz = oldaddr + newsize;
-        if ((deallocuvm(myproc()->pgdir, oldsz, newsz) == 0)) {
-          return FAILED;
-        }
-      }
       
       myproc()->wmap.length[foundInd] = newsize;
       myproc()->wmap.addr[foundInd] = oldaddr;
@@ -491,6 +482,17 @@ sys_wremap(void) {
   } else {
     cprintf("wremap debug: Failed due to bad flags\n");
     return FAILED;
+  }
+  
+  // De-alloc any yielded space
+  if (oldsize > newsize) {
+    for (int i = 0; i < ((oldsize - newsize) / PGSIZE); i++) {
+      int addr = oldaddr + newsize + (PGSIZE * i);
+      cprintf("rm %x\n", addr);
+      pde_t* pg = walkpgdir(myproc()->pgdir, 
+        (void*)addr, 0);
+      *pg = 0;
+    }
   }
 
   cprintf("wremap debug: Success, addr %x\n", oldaddr);
