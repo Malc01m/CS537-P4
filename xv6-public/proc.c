@@ -199,8 +199,29 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+
   // Added P4
-  np->wmap = curproc->wmap;
+  for (int i = 0; i < curproc->wmap.total_mmaps; i++) {
+    np->wmap.addr[i] = curproc->wmap.addr[i];
+    if (!curproc->wmap.shared[i]) {
+      // Alloc new momory for child
+      char *mem = kalloc();
+      cprintf("new mem: %x; old mem virt: %x\n", mem, curproc->wmap.addr[i]);
+      // Copy mem
+      memmove(mem, (void*)np->wmap.addr[i], PGSIZE);
+      // Unmap old page
+      pte_t* oldpg = walkpgdir(np->pgdir, (void*)np->wmap.addr[i], 0);
+      *oldpg = 0;
+      // Map new page
+      mappages(np->pgdir, (void*)np->wmap.addr[i], PGSIZE, V2P(mem), PTE_W | PTE_U);
+    }
+    np->wmap.anon[i] = curproc->wmap.anon[i];
+    np->wmap.fptr[i] = curproc->wmap.fptr[i];
+    np->wmap.length[i] = curproc->wmap.length[i];
+    np->wmap.n_loaded_pages[i] = curproc->wmap.n_loaded_pages[i];
+    np->wmap.shared[i] = curproc->wmap.shared[i];
+    np->wmap.total_mmaps = curproc->wmap.total_mmaps;
+  }
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -245,14 +266,10 @@ exit(void)
   }
 
   // Added P4 - Remove all mappings
-  /*
-  int maps = curproc->wmap.total_mmaps;
-  for (int i = 0; i < maps; i++) {
-    pte_t *pte = walkpgdir(curproc->pgdir, curproc->wmap.addr[i], 0);
-    uint physical_address = PTE_ADDR(*pte);
-    kfree(P2V(physical_address));
+  for (int i = 0; i < curproc->wmap.total_mmaps; i++) {
+    cprintf("Exit debug: Invalidating %x\n", curproc->wmap.addr[i]);
+    freevm(curproc->pgdir);
   }
-  */
 
   begin_op();
   iput(curproc->cwd);

@@ -92,7 +92,7 @@ trap(struct trapframe *tf)
     for (int i = 0; i < proc_wmap->total_mmaps; i++) {
       uint start = proc_wmap->addr[i];
       uint end = proc_wmap->addr[i] + proc_wmap->length[i];
-      if ((start <= faultAddr) && (end > faultAddr)) {
+      if ((start <= faultAddr) && (end >= faultAddr)) {
         mapIndx = i;
       }
     }
@@ -117,8 +117,8 @@ trap(struct trapframe *tf)
     mappages(myproc()->pgdir, (void*)thispgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U);
     myproc()->wmap.n_loaded_pages[mapIndx]++;
   } else {
-    cprintf("sseg fault\n");
-    myproc()->killed = 1;
+    cprintf("seg fault during access to %x\n", faultAddr);
+    exit();
   }
   break;
 
