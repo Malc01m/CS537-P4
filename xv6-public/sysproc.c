@@ -452,25 +452,37 @@ sys_wremap(void) {
 
         // Check for collisions, move if needed
         for (int i = 0; i < myproc()->wmap.total_mmaps; i++) {
+          // Again, don't check for collision w/ self
+          if (i != foundInd) {
 
-          int otherStart = myproc()->wmap.addr[i];
-          int otherEnd = otherStart + myproc()->wmap.length[i];
+            int otherStart = myproc()->wmap.addr[i];
+            int otherEnd = otherStart + myproc()->wmap.length[i];
 
-          // Check if any other mapping starts or ends within the span of this mapping
-          if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
-              ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
+            // Check if any other mapping starts or ends within the span of this mapping
+            if (((otherStart <= (oldaddr + newsize)) && (otherStart >= oldaddr)) ||
+                ((otherEnd <= (oldaddr + newsize)) && (otherEnd >= oldaddr))) {
 
-            oldaddr += PAGE_SIZE;
-            if ((oldaddr + newsize) >= 0x80000000) {
-              cprintf("wremap debug: Failed due to no space\n");
-              return FAILED;
-            } else {
-              recheck = 1;
-              break;
-            } 
+              oldaddr += PAGE_SIZE;
+              if ((oldaddr + newsize) >= 0x80000000) {
+                cprintf("wremap debug: Failed due to no space\n");
+                return FAILED;
+              } else {
+                recheck = 1;
+                break;
+              } 
+            }
           }
         }
       } while (recheck);
+
+      // De-alloc any yielded space
+      if (oldsize > newsize) {
+        uint oldsz = oldaddr + oldsize;
+        uint newsz = oldaddr + newsize;
+        if ((deallocuvm(myproc()->pgdir, oldsz, newsz) == 0)) {
+          return FAILED;
+        }
+      }
       
       myproc()->wmap.length[foundInd] = newsize;
       myproc()->wmap.addr[foundInd] = oldaddr;
